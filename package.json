@@ -1,11 +1,11 @@
 {
   "name": "react-native-sortable-list",
-  "version": "0.0.24",
+  "version": "0.0.25",
   "description": "React Native Sortable List component",
   "main": "index.js",
   "repository": {
     "type": "git",
-    "url": "git@github.com:gitim/react-native-sortable-list.git"
+    "url": "git@github.com:dimasciput/react-native-sortable-list.git"
   },
   "keywords": [
     "react-native",

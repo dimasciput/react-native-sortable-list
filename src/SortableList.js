@@ -32,7 +32,7 @@ export default class SortableList extends Component {
     manuallyActivateRows: PropTypes.bool,
     keyboardShouldPersistTaps: PropTypes.oneOf(['never', 'always', 'handled']),
     scrollEventThrottle: PropTypes.number,
-    decelerationRate: PropTypes.oneOf([PropTypes.string, PropTypes.number]),
+    decelerationRate: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     pagingEnabled: PropTypes.bool,
     nestedScrollEnabled: PropTypes.bool,
     disableIntervalMomentum: PropTypes.bool,
@@ -45,6 +45,8 @@ export default class SortableList extends Component {
     onActivateRow: PropTypes.func,
     onReleaseRow: PropTypes.func,
     onScroll: PropTypes.func,
+
+    rowIsDisabled: PropTypes.func,
   };
 
   static defaultProps = {
@@ -88,7 +90,7 @@ export default class SortableList extends Component {
     scrollEnabled: this.props.scrollEnabled
   };
 
-  componentWillMount() {
+  componentDidMount() {
     this.state.order.forEach((key) => {
       this._rowsLayouts[key] = new Promise((resolve) => {
         this._resolveRowLayout[key] = resolve;
@@ -100,20 +102,20 @@ export default class SortableList extends Component {
         this._resolveHeaderLayout = resolve;
       });
     }
+
     if (this.props.renderFooter && !this.props.horizontal) {
       this._footerLayout = new Promise((resolve) => {
         this._resolveFooterLayout = resolve;
       });
     }
-  }
 
-  componentDidMount() {
     this._onUpdateLayouts();
   }
 
-  componentWillReceiveProps(nextProps) {
-    const {data, order} = this.state;
-    let {data: nextData, order: nextOrder} = nextProps;
+  componentDidUpdate(prevProps, prevState) {
+    const {data, order, scrollEnabled} = this.state;
+    let {data: nextData, order: nextOrder} = this.props;
+    const {data: prevData} = prevState;
 
     if (data && nextData && !shallowEqual(data, nextData)) {
       nextOrder = nextOrder || Object.keys(nextData)
@@ -143,18 +145,15 @@ export default class SortableList extends Component {
     } else if (order && nextOrder && !shallowEqual(order, nextOrder)) {
       this.setState({order: nextOrder});
     }
-  }
-
-  componentDidUpdate(prevProps, prevState) {
-    const {data, scrollEnabled} = this.state;
-    const {data: prevData} = prevState;
 
     if (data && prevData && !shallowEqual(data, prevData)) {
       this._onUpdateLayouts();
     }
-    if (prevProps.scrollEnabled !== scrollEnabled) {
-      this.setState({scrollEnabled: prevProps.scrollEnabled})
-    }
+
+    // See https://github.com/gitim/react-native-sortable-list/issues/188
+    // if (prevProps.scrollEnabled !== scrollEnabled) {
+    //   this.setState({scrollEnabled: prevProps.scrollEnabled});
+    // }
   }
 
   scrollBy({dx = 0, dy = 0, animated = false}) {
@@ -292,6 +291,14 @@ export default class SortableList extends Component {
 
       const active = activeRowKey === key;
       const released = releasedRowKey === key;
+      const disabled = this.props.rowIsDisabled
+        ? this.props.rowIsDisabled({
+            key,
+            data: data[key],
+            active,
+            index,
+          })
+        : !sortingEnabled;
 
       if (active || released) {
         style[ZINDEX] = 100;
@@ -304,7 +311,7 @@ export default class SortableList extends Component {
           horizontal={horizontal}
           activationTime={rowActivationTime}
           animated={animated && !active}
-          disabled={!sortingEnabled}
+          disabled={disabled}
           style={style}
           location={location}
           onLayout={!rowsLayouts ? this._onLayoutRow.bind(this, key) : null}
@@ -316,7 +323,7 @@ export default class SortableList extends Component {
           {renderRow({
             key,
             data: data[key],
-            disabled: !sortingEnabled,
+            disabled,
             active,
             index,
           })}
